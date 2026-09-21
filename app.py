@@ -710,6 +710,22 @@ def render_sidebar():
     else:
         st.sidebar.warning("In-memory cache only — resets on app reboot.\n\nAdd GITHUB_TOKEN + GIST_ID to st.secrets for persistence.")
     st.sidebar.caption(f"{len(st.session_state.ticker_cache)} companies cached right now.")
+ 
+    # Check if the cache exists before rendering
+    if 'ticker_cache' in st.session_state and st.session_state.ticker_cache:
+        # Convert the JSON dict to a DataFrame
+        # Use orient='index' if keys (like tickers) should be rows
+        df = pd.DataFrame.from_dict(st.session_state.ticker_cache, orient='index')
+        
+        st.write("### Ticker Cache Data")
+        # For an interactive, scrollable table:
+        st.dataframe(df) 
+        
+        # OR for a static, fully expanded table:
+        # st.table(df)
+    else:
+        st.warning("The ticker cache is currently empty or not initialized.")
+     
     if st.sidebar.button("Clear ticker cache"):
         st.session_state.ticker_cache.clear()
         save_ticker_cache({})
