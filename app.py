@@ -128,10 +128,10 @@ st.markdown(
         font-weight: 600;
     }}
     section[data-testid="stSidebar"] {{
-        background-color: {BOB_NAVY};
+        background-color: white;
     }}
     section[data-testid="stSidebar"] * {{
-        color: {BOB_NAVY} !important;
+        color: #12284C !important;
     }}
     /* selectbox closed state (sits inside the sidebar) */
     section[data-testid="stSidebar"] div[data-baseweb="select"] > div {{
