@@ -127,26 +127,32 @@ st.markdown(
         border-radius: 6px;
         font-weight: 600;
     }}
+    section[data-testid="stSidebar"] {{
+        background-color: {BOB_NAVY};
+    }}
+    section[data-testid="stSidebar"] * {{
+        color: #F3F6FB !important;
+    }}
     /* selectbox closed state (sits inside the sidebar) */
-   section[data-testid="stSidebar"] div[data-baseweb="select"] > div {{
-       background-color: white !important;
-       border: 1px solid #F7941D;
-       border-radius: 6px;
-   }}
-   section[data-testid="stSidebar"] div[data-baseweb="select"] * {{
-       color: #12284C !important;
-   }}
-   /* dropdown option list renders in a portal OUTSIDE the sidebar, so it
-      needs its own (unscoped) rule rather than the sidebar selector above */
-   div[data-baseweb="popover"] ul[role="listbox"] {{
-       background-color: white !important;
-   }}
-   div[data-baseweb="popover"] ul[role="listbox"] li {{
-       color: #12284C !important;
-   }}
-   div[data-baseweb="popover"] ul[role="listbox"] li:hover {{
-       background-color: #F7941D22 !important;
-   }}
+    section[data-testid="stSidebar"] div[data-baseweb="select"] > div {{
+        background-color: white !important;
+        border: 1px solid {BOB_ORANGE};
+        border-radius: 6px;
+    }}
+    section[data-testid="stSidebar"] div[data-baseweb="select"] * {{
+        color: {BOB_NAVY} !important;
+    }}
+    /* dropdown option list renders in a portal OUTSIDE the sidebar, so it
+       needs its own (unscoped) rule rather than the sidebar selector above */
+    div[data-baseweb="popover"] ul[role="listbox"] {{
+        background-color: white !important;
+    }}
+    div[data-baseweb="popover"] ul[role="listbox"] li {{
+        color: {BOB_NAVY} !important;
+    }}
+    div[data-baseweb="popover"] ul[role="listbox"] li:hover {{
+        background-color: {BOB_ORANGE}22 !important;
+    }}
     .metric-card {{
         background: white;
         border-radius: 10px;
@@ -436,6 +442,17 @@ def render_key_stats(info: dict):
             )
 
 
+def _safe_key(*parts: str) -> str:
+    """Turn arbitrary text (company names, tickers) into a stable, unique
+    Streamlit widget key. Needed because Streamlit auto-generates element
+    IDs from an element's type + parameters — two companies that happen to
+    render an IDENTICAL chart (e.g. same risk rating, or both show the
+    'no price data' fallback) would otherwise collide and raise
+    StreamlitDuplicateElementId."""
+    raw = "_".join(str(p) for p in parts)
+    return re.sub(r"[^a-zA-Z0-9_]+", "_", raw).strip("_").lower()
+
+
 def render_price_chart(hist: pd.DataFrame, company: str):
     if hist is None or hist.empty:
         st.info("No price history available for this ticker.")
@@ -462,10 +479,10 @@ def render_price_chart(hist: pd.DataFrame, company: str):
         yaxis_title="Price",
         showlegend=False,
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, key=_safe_key("price_chart", company))
 
 
-def render_risk_gauge(rating: int | None):
+def render_risk_gauge(rating: int | None, company: str):
     if rating is None:
         st.warning("Could not automatically detect a Risk Rating in the AI report — check the full text below.")
         return
@@ -486,11 +503,11 @@ def render_risk_gauge(rating: int | None):
                     {"range": [4, 5], "color": RISK_COLORS[5]},
                 ],
             },
-            title={"text": "AI Risk Rating", "font": {"color": BOB_NAVY}},
+            title={"text": f"{company} — AI Risk Rating", "font": {"color": BOB_NAVY}},
         )
     )
     fig.update_layout(height=260, margin=dict(l=20, r=20, t=50, b=10))
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, key=_safe_key("risk_gauge", company))
 
 
 def render_comparison(results: dict):
@@ -508,7 +525,7 @@ def render_comparison(results: dict):
             }
         )
     df = pd.DataFrame(rows)
-    st.dataframe(df, use_container_width=True, hide_index=True)
+    st.dataframe(df, use_container_width=True, hide_index=True, key="comparison_table")
 
     rated = df.dropna(subset=["Risk Rating"])
     if not rated.empty:
@@ -527,7 +544,7 @@ def render_comparison(results: dict):
             paper_bgcolor="white",
             height=320,
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, key="comparison_bar_chart")
 
 # ==============================================================================
 # SIDEBAR
@@ -684,24 +701,25 @@ def main():
                 with chart_col:
                     render_price_chart(r["hist"], company)
                 with gauge_col:
-                    render_risk_gauge(r["risk_rating"])
+                    render_risk_gauge(r["risk_rating"], company)
 
                 st.markdown("#### AI Risk Report")
                 st.markdown(r["report"])
 
                 with st.expander("Raw financial statements"):
                     st.markdown("**Balance Sheet**")
-                    st.dataframe(r["bs"], use_container_width=True)
+                    st.dataframe(r["bs"], use_container_width=True, key=_safe_key("bs", company))
                     st.markdown("**Profit & Loss**")
-                    st.dataframe(r["pl"], use_container_width=True)
+                    st.dataframe(r["pl"], use_container_width=True, key=_safe_key("pl", company))
                     st.markdown("**Cash Flow**")
-                    st.dataframe(r["cf"], use_container_width=True)
+                    st.dataframe(r["cf"], use_container_width=True, key=_safe_key("cf", company))
 
                 st.download_button(
                     f"⬇️ Download {company} report (Markdown)",
                     data=r["report"],
                     file_name=f"{company.replace(' ', '_')}_risk_report.md",
                     mime="text/markdown",
+                    key=_safe_key("download", company),
                 )
 
         if len(st.session_state.results) > 1:
@@ -713,6 +731,7 @@ def main():
                 data=combined,
                 file_name="BOB_AI_Financial_Risk_Report.md",
                 mime="text/markdown",
+                key="download_combined",
             )
 
 
