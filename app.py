@@ -316,12 +316,12 @@ def get_ticker(company: str, model) -> tuple[str | None, str]:
     key = company.strip().lower()
     cache = st.session_state.ticker_cache
     if key in cache:
-        return cache[key], "cache"
+        return cache[key], "Yahoo Finance Cache"
     ticker = search_yfinance_ticker(company, model)
     if ticker:
         cache[key] = ticker
         save_ticker_cache(cache)
-        return ticker, "ai"
+        return ticker, "Yahoo Finance"
     return None, "not found"
 
 # ==============================================================================
