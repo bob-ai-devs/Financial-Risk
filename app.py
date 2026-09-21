@@ -597,7 +597,6 @@ def render_price_chart(hist: pd.DataFrame, company: str):
         st.info("No price history available for this ticker.")
         return
 
-    # Ensure Close is numeric
     hist = hist.copy()
     hist["Close"] = pd.to_numeric(hist["Close"], errors="coerce")
     hist = hist.dropna(subset=["Close"])
@@ -612,6 +611,10 @@ def render_price_chart(hist: pd.DataFrame, company: str):
 
     max_value = hist.loc[max_idx, "Close"]
     min_value = hist.loc[min_idx, "Close"]
+
+    # Format dates
+    max_date = pd.to_datetime(max_idx).strftime("%d-%b-%Y")
+    min_date = pd.to_datetime(min_idx).strftime("%d-%b-%Y")
 
     fig = go.Figure()
 
@@ -628,7 +631,7 @@ def render_price_chart(hist: pd.DataFrame, company: str):
         )
     )
 
-    # Highest value — vertical green dashed line
+    # Highest value — green dashed line
     fig.add_vline(
         x=max_idx,
         line=dict(
@@ -638,7 +641,7 @@ def render_price_chart(hist: pd.DataFrame, company: str):
         ),
     )
 
-    # Lowest value — vertical red dashed line
+    # Lowest value — red dashed line
     fig.add_vline(
         x=min_idx,
         line=dict(
@@ -648,12 +651,46 @@ def render_price_chart(hist: pd.DataFrame, company: str):
         ),
     )
 
+    # Highest date annotation
+    fig.add_annotation(
+        x=max_idx,
+        y=1.02,
+        xref="x",
+        yref="paper",
+        text=max_date,
+        showarrow=False,
+        textangle=-90,
+        font=dict(
+            color="green",
+            size=10,
+        ),
+        xanchor="center",
+        yanchor="bottom",
+    )
+
+    # Lowest date annotation
+    fig.add_annotation(
+        x=min_idx,
+        y=1.02,
+        xref="x",
+        yref="paper",
+        text=min_date,
+        showarrow=False,
+        textangle=-90,
+        font=dict(
+            color="red",
+            size=10,
+        ),
+        xanchor="center",
+        yanchor="bottom",
+    )
+
     fig.update_layout(
         title=f"{company} — 1 Year Price Trend",
         title_font_color=BOB_NAVY,
         plot_bgcolor="white",
         paper_bgcolor="white",
-        margin=dict(l=10, r=10, t=40, b=10),
+        margin=dict(l=10, r=10, t=65, b=10),
         height=320,
         yaxis_title="Price",
         showlegend=False,
