@@ -117,7 +117,7 @@ st.markdown(
         transition: all 0.15s ease-in-out;
     }}
     div.stButton > button:hover {{
-        background-color: {BOB_CREAM};
+        background-color: #FFD580;
         color: {BOB_MAROON};
         transform: scale(1.02);
     }}
