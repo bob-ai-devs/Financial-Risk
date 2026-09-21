@@ -293,6 +293,7 @@ def search_yfinance_ticker(company: str, model) -> str | None:
     """Ask Gemini for the Yahoo Finance ticker of a company."""
     prompt = f"""Return ONLY the Yahoo Finance ticker symbol for the following company. 
     Sometime acronyms are given, verify popular acronyms like 'BOB' for 'Bank of Baroda' etc.
+    Some important index ticker has '^' in their ticker name, do not miss such '^' if available.
 
 Rules:
 - For NSE listed Indian companies, append ".NS".
