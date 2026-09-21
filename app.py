@@ -633,7 +633,7 @@ def render_risk_gauge(rating: int | None, company: str):
             number={"suffix": " / 5", "font": {"color": BOB_NAVY, "size": 40}},
             gauge={
                 "axis": {"range": [0, 5], "tickwidth": 1},
-                "bar": {"color": color},
+                "bar": {"color": "blue"},
                 "steps": [
                     {"range": [0, 1], "color": RISK_COLORS[1]},
                     {"range": [1, 2], "color": RISK_COLORS[2]},
