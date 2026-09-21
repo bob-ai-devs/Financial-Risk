@@ -953,7 +953,21 @@ def main():
                     render_risk_gauge(r["risk_rating"], company)
 
                 st.markdown("#### AI Risk Report")
-                st.markdown(sanitize_markdown(r["report"]))
+                st.markdown(
+                    f"""
+                    <div style="
+                        background-color: #fff8ef;
+                        border: 1px solid #f7941d;
+                        border-radius: 8px;
+                        padding: 10px 14px;
+                        color: #002e6e;
+                    ">
+                        {sanitize_markdown(r["report"])}
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+                # st.markdown(sanitize_markdown(r["report"]))
 
                 with st.expander("Raw financial statements"):
                     st.markdown("**Balance Sheet**")
