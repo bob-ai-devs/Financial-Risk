@@ -140,7 +140,7 @@ st.markdown(
         border-radius: 6px;
     }}
     section[data-testid="stSidebar"] div[data-baseweb="select"] * {{
-        color: {BOB_NAVY} !important;
+        color: #12284C !important;
     }}
     /* dropdown option list renders in a portal OUTSIDE the sidebar, so it
        needs its own (unscoped) rule rather than the sidebar selector above */
