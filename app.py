@@ -148,10 +148,10 @@ st.markdown(
         background-color: white !important;
     }}
     div[data-baseweb="popover"] ul[role="listbox"] li {{
-        color: {BOB_NAVY} !important;
+        color: #12284C !important;
     }}
     div[data-baseweb="popover"] ul[role="listbox"] li:hover {{
-        background-color: {BOB_ORANGE}22 !important;
+        background-color: #F7941D22 !important;
     }}
     .metric-card {{
         background: white;
