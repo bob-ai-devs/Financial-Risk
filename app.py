@@ -70,7 +70,7 @@ BOB_NAVY_LIGHT = "#1E3E73"
 BOB_CREAM = "#FFF8F1"        # page background
 BOB_GREY = "#5B6675"
 
-RISK_COLORS = {1: "#2E9E4E", 2: "#8FC93A", 3: "#F7C700", 4: "#F0862C", 5: "#D62839"}
+RISK_COLORS = {5: "#2E9E4E", 4: "#8FC93A", 3: "#F7C700", 2: "#F0862C", 1: "#D62839"}
 
 # ==============================================================================
 # PAGE CONFIG + THEME
@@ -564,7 +564,7 @@ def build_prompt(financial_text: str, market_text: str) -> str:
         "3. A detailed opinion on the financial health of the company, "
         "incorporating the Market Snapshot context (valuation, analyst "
         "sentiment, sector) alongside the statement analysis.\n"
-        "4. A Risk Rating from 1 to 5 (1 = low risk, 5 = high risk), written "
+        "4. A Risk Rating from 1 to 5 (1 = high risk, 5 = low risk), written "
         "exactly in the form 'Risk Rating: X/5' on its own line, followed by "
         "bullet-point justification."
     )
