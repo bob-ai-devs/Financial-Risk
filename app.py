@@ -117,8 +117,8 @@ st.markdown(
         transition: all 0.15s ease-in-out;
     }}
     div.stButton > button:hover {{
-        background-color: {BOB_MAROON};
-        color: white;
+        background-color: {BOB_CREAM};
+        color: {BOB_MAROON};
         transform: scale(1.02);
     }}
     div.stDownloadButton > button {{
