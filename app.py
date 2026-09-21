@@ -225,13 +225,18 @@ GIST_FILENAME = "ticker_cache.json"
 
 @st.cache_resource(show_spinner=False)
 def _memory_cache() -> dict:
-    """Lives for as long as this container is running; shared by every
-    session connected to it. Baseline cache tier — always active."""
+    """
+    Lives for as long as this container is running; shared by every
+    session connected to it. Baseline cache tier — always active.
+    """
     return {}
 
 
 def _gist_configured() -> bool:
-    return bool(st.secrets.get("GITHUB_TOKEN")) and bool(st.secrets.get("GIST_ID"))
+    return (
+        bool(st.secrets.get("GITHUB_TOKEN"))
+        and bool(st.secrets.get("GIST_ID"))
+    )
 
 
 def _gist_headers() -> dict:
@@ -244,37 +249,105 @@ def _gist_headers() -> dict:
 def _gist_load() -> dict:
     try:
         url = f"https://api.github.com/gists/{st.secrets['GIST_ID']}"
-        resp = requests.get(url, headers=_gist_headers(), timeout=10)
+
+        resp = requests.get(
+            url,
+            headers=_gist_headers(),
+            timeout=10,
+        )
         resp.raise_for_status()
+
         files = resp.json().get("files", {})
-        content = files.get(GIST_FILENAME, {}).get("content", "{}")
+        content = files.get(
+            GIST_FILENAME,
+            {}
+        ).get("content", "{}")
+
         return json.loads(content)
+
     except Exception as e:
-        st.session_state.setdefault("errors", []).append(f"[Gist load] {e}")
+        st.session_state.setdefault("errors", []).append(
+            f"[Gist load] {e}"
+        )
         return {}
 
 
-def _gist_save(cache: dict) -> None:
+def _gist_save(updates: dict) -> None:
+    """
+    Update only the supplied company -> ticker pairs.
+
+    All existing entries in ticker_cache.json remain intact.
+    """
     try:
+        # --------------------------------------------------------
+        # 1. Read the current JSON from Gist
+        # --------------------------------------------------------
+        existing_cache = _gist_load()
+
+        if not isinstance(existing_cache, dict):
+            existing_cache = {}
+
+        # --------------------------------------------------------
+        # 2. Update ONLY the supplied entries
+        # --------------------------------------------------------
+        existing_cache.update(updates)
+
+        # --------------------------------------------------------
+        # 3. Save the complete merged cache
+        # --------------------------------------------------------
         url = f"https://api.github.com/gists/{st.secrets['GIST_ID']}"
-        payload = {"files": {GIST_FILENAME: {"content": json.dumps(cache, indent=2)}}}
-        resp = requests.patch(url, headers=_gist_headers(), json=payload, timeout=10)
+
+        payload = {
+            "files": {
+                GIST_FILENAME: {
+                    "content": json.dumps(
+                        existing_cache,
+                        indent=2,
+                        ensure_ascii=False,
+                    )
+                }
+            }
+        }
+
+        resp = requests.patch(
+            url,
+            headers=_gist_headers(),
+            json=payload,
+            timeout=10,
+        )
         resp.raise_for_status()
+
     except Exception as e:
-        st.session_state.setdefault("errors", []).append(f"[Gist save] {e}")
+        st.session_state.setdefault("errors", []).append(
+            f"[Gist save] {e}"
+        )
 
 
 def load_ticker_cache() -> dict:
     mem = _memory_cache()
+
     if not mem and _gist_configured():
         mem.update(_gist_load())
+
     return mem
 
 
-def save_ticker_cache(cache: dict) -> None:
-    _memory_cache().update(cache)  # keep tier-1 in sync
+def save_ticker_cache(updates: dict) -> None:
+    """
+    Update only the supplied ticker mappings.
+
+    Existing cache entries that are not included in `updates`
+    remain untouched.
+    """
+    if not updates:
+        return
+
+    # Keep tier-1 memory cache in sync
+    _memory_cache().update(updates)
+
+    # Update Gist while preserving all existing rows
     if _gist_configured():
-        _gist_save(cache)
+        _gist_save(updates)
 
 
 if "ticker_cache" not in st.session_state:
@@ -888,6 +961,33 @@ def main():
             key="ticker_editor",
         )
         st.session_state.resolved = edited
+
+        # ------------------------------------------------------------
+        # Update ticker cache with edited values
+        # ------------------------------------------------------------
+        edited_rows = st.session_state.ticker_editor.get("edited_rows", {})
+        
+        ticker_updates = {}
+        
+        for row_idx, changes in edited_rows.items():
+        
+            if "Ticker" not in changes:
+                continue
+        
+            company = str(
+                edited.iloc[row_idx]["Company"]
+            ).strip()
+        
+            ticker = str(
+                changes["Ticker"]
+            ).strip()
+        
+            if company and ticker and ticker.lower() != "nan":
+                ticker_updates[company] = ticker
+        
+        
+        if ticker_updates:
+            save_ticker_cache(ticker_updates)
 
         st.markdown("#### Step 3 — Generate the AI risk analysis")
         run_clicked = st.button("📊 Generate Financial Risk Analysis", type="primary")
