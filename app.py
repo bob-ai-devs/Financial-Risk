@@ -127,6 +127,12 @@ st.markdown(
         border-radius: 6px;
         font-weight: 600;
     }}
+    div.stDownloadButton > button:hover {{
+        background-color: #e6e6fa;
+        color: {BOB_NAVY};
+        border-radius: 6px;
+        font-weight: 600;
+    }}
     section[data-testid="stSidebar"] {{
         background-color: #fff1e0;
     }}
