@@ -835,7 +835,7 @@ def render_comparison(results: dict):
         fig.update_layout(
             title="Risk Rating Comparison",
             title_font_color=BOB_NAVY,
-            yaxis=dict(range=[0, 5], title="Risk (1 = low, 5 = high)"),
+            yaxis=dict(range=[0, 5], title="Risk (1 = high, 5 = low)"),
             plot_bgcolor="white",
             paper_bgcolor="white",
             height=320,
