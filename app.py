@@ -631,23 +631,23 @@ def render_price_chart(hist: pd.DataFrame, company: str):
         )
     )
 
-    # Highest value — green dashed line
+    # Highest value — green dotted line
     fig.add_vline(
         x=max_idx,
         line=dict(
             color="green",
             width=1,
-            dash="dash",
+            dash="dot",
         ),
     )
 
-    # Lowest value — red dashed line
+    # Lowest value — red dotted line
     fig.add_vline(
         x=min_idx,
         line=dict(
             color="red",
             width=1,
-            dash="dash",
+            dash="dot",
         ),
     )
 
