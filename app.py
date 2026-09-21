@@ -489,7 +489,7 @@ def build_prompt(financial_text: str, market_text: str) -> str:
         "3. A detailed opinion on the financial health of the company, "
         "incorporating the Market Snapshot context (valuation, analyst "
         "sentiment, sector) alongside the statement analysis.\n"
-        "4. A Risk Rating from 1.0 to 5.0 (can be floating point) (1 = low risk, 5 = high risk), written "
+        "4. A Risk Rating from 1 to 5 (1 = low risk, 5 = high risk), written "
         "exactly in the form 'Risk Rating: X/5' on its own line, followed by "
         "bullet-point justification."
     )
