@@ -596,7 +596,26 @@ def render_price_chart(hist: pd.DataFrame, company: str):
     if hist is None or hist.empty:
         st.info("No price history available for this ticker.")
         return
+
+    # Ensure Close is numeric
+    hist = hist.copy()
+    hist["Close"] = pd.to_numeric(hist["Close"], errors="coerce")
+    hist = hist.dropna(subset=["Close"])
+
+    if hist.empty:
+        st.info("No valid price history available for this ticker.")
+        return
+
+    # Highest and lowest points
+    max_idx = hist["Close"].idxmax()
+    min_idx = hist["Close"].idxmin()
+
+    max_value = hist.loc[max_idx, "Close"]
+    min_value = hist.loc[min_idx, "Close"]
+
     fig = go.Figure()
+
+    # Price line
     fig.add_trace(
         go.Scatter(
             x=hist.index,
@@ -608,6 +627,27 @@ def render_price_chart(hist: pd.DataFrame, company: str):
             name="Close",
         )
     )
+
+    # Highest value — vertical green dashed line
+    fig.add_vline(
+        x=max_idx,
+        line=dict(
+            color="green",
+            width=1,
+            dash="dash",
+        ),
+    )
+
+    # Lowest value — vertical red dashed line
+    fig.add_vline(
+        x=min_idx,
+        line=dict(
+            color="red",
+            width=1,
+            dash="dash",
+        ),
+    )
+
     fig.update_layout(
         title=f"{company} — 1 Year Price Trend",
         title_font_color=BOB_NAVY,
@@ -618,7 +658,12 @@ def render_price_chart(hist: pd.DataFrame, company: str):
         yaxis_title="Price",
         showlegend=False,
     )
-    st.plotly_chart(fig, use_container_width=True, key=_safe_key("price_chart", company))
+
+    st.plotly_chart(
+        fig,
+        use_container_width=True,
+        key=_safe_key("price_chart", company),
+    )
 
 
 def render_risk_gauge(rating: int | None, company: str):
