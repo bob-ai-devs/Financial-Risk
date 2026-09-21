@@ -165,6 +165,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+
 # ==============================================================================
 # CONSTANTS
 # ==============================================================================
@@ -327,6 +328,10 @@ def get_ticker(company: str, model) -> tuple[str | None, str]:
 # ==============================================================================
 @st.cache_data(ttl=3600, show_spinner=False)
 def get_financial_data(ticker: str):
+    """Fetches ONLY the three financial statements + price history. Headline
+    market stats (market cap, P/E, 52-week range, dividend yield, etc.) are
+    fetched separately by get_market_stats(), from lighter/more reliable
+    yfinance endpoints rather than being bundled in here."""
     stock = yf.Ticker(ticker)
     try:
         bs = stock.balance_sheet
@@ -341,14 +346,67 @@ def get_financial_data(ticker: str):
     except Exception:
         cf = pd.DataFrame()
     try:
-        info = stock.info
-    except Exception:
-        info = {}
-    try:
         hist = stock.history(period="1y")
     except Exception:
         hist = pd.DataFrame()
-    return bs, pl, cf, info, hist
+    return bs, pl, cf, hist
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def get_market_stats(ticker: str) -> dict:
+    """
+    Pulls headline market stats from yfinance sources OTHER than the balance
+    sheet / P&L / cash flow used above:
+
+      - `Ticker.fast_info` — a lightweight snapshot endpoint (market cap,
+        last price, 52-week high/low, moving averages) that's quicker and
+        far less prone to throttling than the full `.info` scrape.
+      - `Ticker.dividends` — the actual dividend-payment history, used to
+        compute a trailing-12-month yield ourselves rather than trusting
+        info["dividendYield"], whose scaling has changed across yfinance
+        versions and is often stale or missing.
+      - `.info` — used only as a last-resort fallback for the handful of
+        fields fast_info doesn't carry (P/E, beta, sector, analyst target),
+        so a slow/blocked info call can't take down the headline stats.
+    """
+    stock = yf.Ticker(ticker)
+    stats: dict = {}
+
+    try:
+        fi = stock.fast_info
+        stats["market_cap"] = fi.get("marketCap") or fi.get("market_cap")
+        stats["last_price"] = fi.get("lastPrice") or fi.get("last_price")
+        stats["year_high"] = fi.get("yearHigh") or fi.get("year_high")
+        stats["year_low"] = fi.get("yearLow") or fi.get("year_low")
+        stats["fifty_day_avg"] = fi.get("fiftyDayAverage") or fi.get("fifty_day_average")
+        stats["two_hundred_day_avg"] = fi.get("twoHundredDayAverage") or fi.get("two_hundred_day_average")
+        stats["currency"] = fi.get("currency")
+        stats["shares_outstanding"] = fi.get("shares")
+    except Exception:
+        pass
+
+    try:
+        divs = stock.dividends
+        if divs is not None and not divs.empty and stats.get("last_price"):
+            cutoff = divs.index.max() - pd.Timedelta(days=365)
+            ttm_dividends = divs[divs.index >= cutoff].sum()
+            stats["dividend_yield"] = (ttm_dividends / stats["last_price"]) if stats["last_price"] else None
+    except Exception:
+        pass
+
+    try:
+        info = stock.info
+        stats["trailing_pe"] = info.get("trailingPE")
+        stats["forward_pe"] = info.get("forwardPE")
+        stats["beta"] = info.get("beta")
+        stats["sector"] = info.get("sector")
+        stats["industry"] = info.get("industry")
+        stats["target_mean_price"] = info.get("targetMeanPrice")
+        stats["recommendation"] = info.get("recommendationKey")
+    except Exception:
+        pass
+
+    return stats
 
 
 def financials_to_text(bs, pl, cf) -> str:
@@ -362,17 +420,61 @@ def financials_to_text(bs, pl, cf) -> str:
         parts.append(f"\n\n{title}\n{df_text(df)}")
     return "".join(parts)
 
+
+def market_stats_to_text(stats: dict) -> str:
+    """Renders the fast_info / dividend / info-derived stats as a text block
+    to hand to Gemini alongside the financial statements."""
+    if not stats:
+        return "No market snapshot available."
+
+    def pct(v):
+        return f"{v:.2%}" if isinstance(v, (int, float)) else "N/A"
+
+    def num(v):
+        return f"{v:,}" if isinstance(v, (int, float)) else "N/A"
+
+    lines = [
+        f"Market Cap: {num(stats.get('market_cap'))}",
+        f"Last Price: {num(stats.get('last_price'))} {stats.get('currency', '')}",
+        f"52-Week High: {num(stats.get('year_high'))}",
+        f"52-Week Low: {num(stats.get('year_low'))}",
+        f"50-Day Average: {num(stats.get('fifty_day_avg'))}",
+        f"200-Day Average: {num(stats.get('two_hundred_day_avg'))}",
+        f"Trailing P/E: {num(stats.get('trailing_pe'))}",
+        f"Forward P/E: {num(stats.get('forward_pe'))}",
+        f"Trailing Dividend Yield (TTM, computed from payout history): {pct(stats.get('dividend_yield'))}",
+        f"Beta: {num(stats.get('beta'))}",
+        f"Sector: {stats.get('sector') or 'N/A'}",
+        f"Industry: {stats.get('industry') or 'N/A'}",
+        f"Analyst Mean Target Price: {num(stats.get('target_mean_price'))}",
+        f"Analyst Recommendation: {stats.get('recommendation') or 'N/A'}",
+    ]
+    return "\n".join(lines)
+
 # ==============================================================================
 # AI REPORT GENERATION
 # ==============================================================================
-def build_prompt(financial_text: str) -> str:
+def build_prompt(financial_text: str, market_text: str) -> str:
     question = (
         "Please read the following Balance Sheet, Profit & Loss, and Cash Flow "
-        "statement data as tables. Based on this, write a report in clean "
-        "Markdown (use ## headings, **bold**, and | pipe | tables |) with a "
-        "first-person-plural voice ('we', 'us') describing our own analysis of "
-        "this third-party company (e.g. 'we have analyzed their filings'). "
-        "Do not literally write the words 'first person plural' anywhere. "
+        "statement data as tables, along with the Market Snapshot section "
+        "(valuation multiples, 52-week range, dividend yield, sector/industry, "
+        "analyst target/recommendation). Based on all of this, write a report "
+        "in clean Markdown (use ## headings, **bold** for emphasis, and "
+        "| pipe | tables | for tabular data) with a first-person-plural voice "
+        "('we', 'us') describing our own analysis of this third-party company "
+        "(e.g. 'we have analyzed their filings'). Do not literally write the "
+        "words 'first person plural' anywhere.\n\n"
+        "Markdown formatting rules — follow these exactly so the report "
+        "renders cleanly:\n"
+        "- Use double asterisks only for **bold**; never a single asterisk.\n"
+        "- Never use an asterisk for multiplication in a formula — write "
+        "'x' or the word 'times' instead (e.g. 'Net Income x 100', not "
+        "'Net Income*100').\n"
+        "- Never use underscores inside words, ratio names, or numbers "
+        "(write 'Debt to Equity', not 'Debt_to_Equity'; write '12,000', "
+        "not '12_000').\n"
+        "- Use '-' for bullet points, not '*'.\n\n"
         "Structure the report under these four headings, phrased as natural "
         "report headings rather than restating the instructions:\n\n"
         "1. Total Assets & Revenue for the 3 most recent years, as a table "
@@ -380,17 +482,22 @@ def build_prompt(financial_text: str) -> str:
         "2. Five key financial ratios appropriate to this company's industry, "
         "for the 3 most recent years, as a table with columns Ratio | Formula "
         "| <Year 1> | <Year 2> | <Year 3>, followed by the detailed year-wise "
-        "calculation for each ratio outside the table.\n"
-        "3. A detailed opinion on the financial health of the company.\n"
+        "calculation for each ratio outside the table. Where relevant, relate "
+        "these to the valuation multiples and analyst context in the Market "
+        "Snapshot (e.g. whether the P/E or dividend yield looks rich or cheap "
+        "relative to the computed ratios).\n"
+        "3. A detailed opinion on the financial health of the company, "
+        "incorporating the Market Snapshot context (valuation, analyst "
+        "sentiment, sector) alongside the statement analysis.\n"
         "4. A Risk Rating from 1 to 5 (1 = low risk, 5 = high risk), written "
         "exactly in the form 'Risk Rating: X/5' on its own line, followed by "
         "bullet-point justification."
     )
-    return f"{question}\n\n{financial_text}"
+    return f"{question}\n\nMARKET SNAPSHOT\n{market_text}\n\n{financial_text}"
 
 
-def generate_report(model, financial_text: str) -> str:
-    prompt = build_prompt(financial_text)
+def generate_report(model, financial_text: str, market_text: str) -> str:
+    prompt = build_prompt(financial_text, market_text)
     response = model.generate_content(prompt)
     return response.text
 
@@ -400,6 +507,38 @@ def extract_risk_rating(text: str) -> int | None:
     if match:
         return int(match.group(1))
     return None
+
+
+def sanitize_markdown(text: str) -> str:
+    """
+    Gemini's Markdown occasionally contains a stray single '*' (used for
+    multiplication in a formula, e.g. 'Assets*Turnover') or an underscore
+    inside a number/identifier (e.g. '12_000'). Streamlit's CommonMark
+    renderer reads an unmatched '*' or a mid-word '_' as the START of
+    *italics* with no visible closing partner, which is exactly the
+    "random italics with no space" symptom. The prompt above now asks
+    Gemini to avoid these, but this is a defensive second layer for
+    whatever slips through — it leaves real **bold** text and | tables |
+    alone.
+    """
+    lines = text.split("\n")
+    cleaned = []
+    for line in lines:
+        if line.strip().startswith("|"):
+            # Table rows are more fragile to touch — leave formatting as-is.
+            cleaned.append(line)
+            continue
+        # Escape underscores sitting between two word characters — these
+        # are almost never intended as emphasis in a financial report.
+        line = re.sub(r"(?<=\w)_(?=\w)", r"\_", line)
+        # If a line has an odd number of single '*' outside of any
+        # '**bold**' pairs, it has an unmatched emphasis marker — escape
+        # every remaining lone '*' so it can't swallow the rest of the line.
+        without_bold = re.sub(r"\*\*.*?\*\*", "", line)
+        if without_bold.count("*") % 2 == 1:
+            line = re.sub(r"(?<!\*)\*(?!\*)", r"\*", line)
+        cleaned.append(line)
+    return "\n".join(cleaned)
 
 # ==============================================================================
 # UI PIECES
@@ -416,7 +555,7 @@ def render_banner():
     )
 
 
-def render_key_stats(info: dict):
+def render_key_stats(stats: dict):
     def fmt_money(v):
         if not v:
             return "—"
@@ -426,14 +565,14 @@ def render_key_stats(info: dict):
         return f"{v:,.0f}"
 
     cols = st.columns(5)
-    stats = [
-        ("Market Cap", fmt_money(info.get("marketCap"))),
-        ("P/E (TTM)", f"{info.get('trailingPE'):.2f}" if info.get("trailingPE") else "—"),
-        ("52W High", f"{info.get('fiftyTwoWeekHigh', '—')}"),
-        ("52W Low", f"{info.get('fiftyTwoWeekLow', '—')}"),
-        ("Dividend Yield", f"{info.get('dividendYield', 0):.2%}" if info.get("dividendYield") else "—"),
+    values = [
+        ("Market Cap", fmt_money(stats.get("market_cap"))),
+        ("P/E (TTM)", f"{stats['trailing_pe']:.2f}" if stats.get("trailing_pe") else "—"),
+        ("52W High", f"{stats['year_high']:,.2f}" if stats.get("year_high") else "—"),
+        ("52W Low", f"{stats['year_low']:,.2f}" if stats.get("year_low") else "—"),
+        ("Dividend Yield", f"{stats['dividend_yield']:.2%}" if stats.get("dividend_yield") else "—"),
     ]
-    for col, (label, value) in zip(cols, stats):
+    for col, (label, value) in zip(cols, values):
         with col:
             st.markdown(
                 f"""<div class="metric-card"><div style="color:{BOB_GREY};font-size:0.8em;">{label}</div>
@@ -513,15 +652,15 @@ def render_risk_gauge(rating: int | None, company: str):
 def render_comparison(results: dict):
     rows = []
     for company, r in results.items():
-        info = r.get("info", {}) or {}
+        stats = r.get("stats", {}) or {}
         rows.append(
             {
                 "Company": company,
                 "Ticker": r.get("ticker"),
                 "Risk Rating": r.get("risk_rating"),
-                "Market Cap": info.get("marketCap"),
-                "P/E (TTM)": info.get("trailingPE"),
-                "Sector": info.get("sector", "—"),
+                "Market Cap": stats.get("market_cap"),
+                "P/E (TTM)": stats.get("trailing_pe"),
+                "Sector": stats.get("sector", "—"),
             }
         )
     df = pd.DataFrame(rows)
@@ -659,13 +798,15 @@ def main():
                             status_box.update(label=msg)
                             if i in (1, 3, 5):  # only actually do work at meaningful points
                                 pass
-                        bs, pl, cf, info, hist = get_financial_data(ticker)
+                        bs, pl, cf, hist = get_financial_data(ticker)
+                        market_stats = get_market_stats(ticker)
                         financial_text = financials_to_text(bs, pl, cf)
-                        report_text = generate_report(model, financial_text)
+                        market_text = market_stats_to_text(market_stats)
+                        report_text = generate_report(model, financial_text, market_text)
                         risk_rating = extract_risk_rating(report_text)
                         st.session_state.results[company] = {
                             "ticker": ticker,
-                            "info": info,
+                            "stats": market_stats,
                             "hist": hist,
                             "bs": bs,
                             "pl": pl,
@@ -694,7 +835,7 @@ def main():
             with tab:
                 st.caption(f"Ticker: **{r['ticker']}**  ·  Generated {r['generated_at']}")
 
-                render_key_stats(r["info"] or {})
+                render_key_stats(r["stats"] or {})
                 st.write("")
 
                 chart_col, gauge_col = st.columns([2, 1])
@@ -704,7 +845,7 @@ def main():
                     render_risk_gauge(r["risk_rating"], company)
 
                 st.markdown("#### AI Risk Report")
-                st.markdown(r["report"])
+                st.markdown(sanitize_markdown(r["report"]))
 
                 with st.expander("Raw financial statements"):
                     st.markdown("**Balance Sheet**")
