@@ -45,12 +45,12 @@ RUN
 """
 
 import json
-import os
 import re
 from datetime import datetime
 
 import pandas as pd
 import plotly.graph_objects as go
+import requests
 import streamlit as st
 import yfinance as yf
 
@@ -148,12 +148,9 @@ st.markdown(
 # ==============================================================================
 # CONSTANTS
 # ==============================================================================
-CACHE_FILE = "ticker_cache.json"
-
 MODEL_OPTIONS = [
     "models/gemini-flash-lite-latest",
     "models/gemini-flash-latest",
-    "models/gemini-2.0-flash",
 ]
 
 STATUS_MESSAGES = [
@@ -170,24 +167,93 @@ STATUS_MESSAGES = [
 ]
 
 # ==============================================================================
-# TICKER CACHE (persisted to disk, same idea as the Flask app)
+# TICKER CACHE — persistence on Streamlit Community Cloud
 # ==============================================================================
-def load_ticker_cache() -> dict:
-    if not os.path.exists(CACHE_FILE):
-        return {}
+# Streamlit Cloud containers are writable while running, but that filesystem
+# is NOT persistent: it's wiped on every reboot (a git push, a manual reboot,
+# or the container waking back up after sleeping from inactivity), and it
+# isn't shared across replicas. A plain ticker_cache.json on disk (the
+# original Flask approach) would silently lose its contents on the next
+# redeploy, so this app uses two tiers instead:
+#
+#   Tier 1 — in-memory (st.cache_resource): a dict that lives for as long as
+#            the container is running, shared by every user hitting it. Zero
+#            setup, but resets on reboot. This is always active.
+#   Tier 2 — OPTIONAL persistent cache via a GitHub Gist: survives reboots
+#            and redeploys because it reads/writes JSON through the GitHub
+#            API instead of local disk. Turns on automatically if you add
+#            GITHUB_TOKEN and GIST_ID to st.secrets.
+#
+# To enable Tier 2:
+#   1. Create a (secret) Gist at gist.github.com containing one file named
+#      ticker_cache.json with the content: {}
+#   2. Copy its Gist ID from the URL (gist.github.com/<user>/<GIST_ID>).
+#   3. Create a GitHub fine-grained personal access token with only the
+#      "gist" scope.
+#   4. Add both to st.secrets:
+#        GITHUB_TOKEN = "ghp_..."
+#        GIST_ID = "your-gist-id"
+#
+# Other solid options if you outgrow this (larger shared state, multi-table
+# data, etc.): Google Sheets via gspread, or a free-tier hosted database
+# such as Supabase/Neon (Postgres) or Upstash (Redis) through st.connection.
+# ==============================================================================
+
+GIST_FILENAME = "ticker_cache.json"
+
+
+@st.cache_resource(show_spinner=False)
+def _memory_cache() -> dict:
+    """Lives for as long as this container is running; shared by every
+    session connected to it. Baseline cache tier — always active."""
+    return {}
+
+
+def _gist_configured() -> bool:
+    return bool(st.secrets.get("GITHUB_TOKEN")) and bool(st.secrets.get("GIST_ID"))
+
+
+def _gist_headers() -> dict:
+    return {
+        "Authorization": f"token {st.secrets['GITHUB_TOKEN']}",
+        "Accept": "application/vnd.github+json",
+    }
+
+
+def _gist_load() -> dict:
     try:
-        with open(CACHE_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
+        url = f"https://api.github.com/gists/{st.secrets['GIST_ID']}"
+        resp = requests.get(url, headers=_gist_headers(), timeout=10)
+        resp.raise_for_status()
+        files = resp.json().get("files", {})
+        content = files.get(GIST_FILENAME, {}).get("content", "{}")
+        return json.loads(content)
+    except Exception as e:
+        st.session_state.setdefault("errors", []).append(f"[Gist load] {e}")
         return {}
+
+
+def _gist_save(cache: dict) -> None:
+    try:
+        url = f"https://api.github.com/gists/{st.secrets['GIST_ID']}"
+        payload = {"files": {GIST_FILENAME: {"content": json.dumps(cache, indent=2)}}}
+        resp = requests.patch(url, headers=_gist_headers(), json=payload, timeout=10)
+        resp.raise_for_status()
+    except Exception as e:
+        st.session_state.setdefault("errors", []).append(f"[Gist save] {e}")
+
+
+def load_ticker_cache() -> dict:
+    mem = _memory_cache()
+    if not mem and _gist_configured():
+        mem.update(_gist_load())
+    return mem
 
 
 def save_ticker_cache(cache: dict) -> None:
-    try:
-        with open(CACHE_FILE, "w", encoding="utf-8") as f:
-            json.dump(cache, f, indent=2)
-    except Exception:
-        pass  # non-fatal — e.g. read-only filesystem on some hosts
+    _memory_cache().update(cache)  # keep tier-1 in sync
+    if _gist_configured():
+        _gist_save(cache)
 
 
 if "ticker_cache" not in st.session_state:
@@ -469,9 +535,13 @@ def render_sidebar():
 
     st.sidebar.markdown("---")
     st.sidebar.markdown("### 🗂️ Ticker Cache")
-    st.sidebar.caption(f"{len(st.session_state.ticker_cache)} companies cached locally.")
+    if _gist_configured():
+        st.sidebar.success("Persistent cache: GitHub Gist ✅")
+    else:
+        st.sidebar.warning("In-memory cache only — resets on app reboot.\n\nAdd GITHUB_TOKEN + GIST_ID to st.secrets for persistence.")
+    st.sidebar.caption(f"{len(st.session_state.ticker_cache)} companies cached right now.")
     if st.sidebar.button("Clear ticker cache"):
-        st.session_state.ticker_cache = {}
+        st.session_state.ticker_cache.clear()
         save_ticker_cache({})
         st.sidebar.success("Cache cleared.")
 
