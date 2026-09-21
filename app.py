@@ -128,14 +128,14 @@ st.markdown(
         font-weight: 600;
     }}
     section[data-testid="stSidebar"] {{
-        background-color: #F7941D;
+        background-color: #fff1e0;
     }}
     section[data-testid="stSidebar"] * {{
         color: #12284C !important;
     }}
     /* selectbox closed state (sits inside the sidebar) */
     section[data-testid="stSidebar"] div[data-baseweb="select"] > div {{
-        background-color: #F7941D !important;
+        background-color: #fff1e0 !important;
         border: 1px solid #F7941D;
         border-radius: 6px;
     }}
@@ -145,7 +145,7 @@ st.markdown(
     /* dropdown option list renders in a portal OUTSIDE the sidebar, so it
        needs its own (unscoped) rule rather than the sidebar selector above */
     div[data-baseweb="popover"] ul[role="listbox"] {{
-        background-color: #F7941D !important;
+        background-color: #fff1e0 !important;
     }}
     div[data-baseweb="popover"] ul[role="listbox"] li {{
         color: #12284C !important;
