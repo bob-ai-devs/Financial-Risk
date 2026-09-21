@@ -969,6 +969,8 @@ def main():
                 )
                 # st.markdown(sanitize_markdown(r["report"]))
 
+                st.html("<br>")
+
                 with st.expander("Raw financial statements"):
                     st.markdown("**Balance Sheet**")
                     st.dataframe(r["bs"], use_container_width=True, key=_safe_key("bs", company))
