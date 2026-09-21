@@ -291,7 +291,7 @@ def get_model(model_name: str, api_key: str):
 
 def search_yfinance_ticker(company: str, model) -> str | None:
     """Ask Gemini for the Yahoo Finance ticker of a company."""
-    prompt = f"""Return ONLY the Yahoo Finance ticker symbol for the following company.
+    prompt = f"""Return ONLY the Yahoo Finance ticker symbol for the following company. Sometime acronyms are given, verify popular acronyms.
 
 Rules:
 - For NSE listed Indian companies, append ".NS".
