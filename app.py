@@ -21,22 +21,20 @@ def parse_and_render_markdown(mixed_text):
         # Check if this part is a table (contains column separator row like |---| )
         if "|" in part and "-|-" in part or "---" in part:
             try:
-                # Convert the markdown table string into a DataFrame
-                df = pd.read_csv(io.StringIO(part.strip()), sep="|").dropna(
-                    axis=1, how="all"
-                    )
-
-                # Clean whitespaces from names and data
+                # Read the markdown table into a DataFrame, skipping the separator row (index 1)
+                df = pd.read_csv(
+                    io.StringIO(part.strip()), sep="|", skiprows=[1]
+                ).dropna(axis=1, how="all")
+            
+                # Clean whitespaces from column headers and cell values
                 df.columns = df.columns.str.strip()
-                df = df.apply(
-                    lambda x: x.str.strip() if x.dtype == "object" else x
-                )
-
+                df = df.apply(lambda x: x.str.strip() if x.dtype == "object" else x)
+            
                 # Render with the styled st.table component
                 st.table(df)
             except Exception as e:
-                # Fallback to st.markdown if parsing fails
                 st.markdown(part)
+
         else:
             # It's standard text/paragraphs, render natively
             st.markdown(part)
