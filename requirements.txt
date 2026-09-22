@@ -4,3 +4,4 @@ numpy>=1.24
 yfinance>=0.2.40
 plotly>=5.20
 google-generativeai>=0.7
+reportlab
