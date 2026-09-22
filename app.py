@@ -1253,9 +1253,9 @@ def main():
                     st.markdown("**Cash Flow**")
                     st.dataframe(r["cf"], use_container_width=True, key=_safe_key("cf", company))
 
-                comp_md, comp_pdf = st.columns(2)
-
                 st.markdown(f"## Download {company} report")
+
+                comp_md, comp_pdf = st.columns(2)
 
                 with comp_md:
                     st.download_button(
@@ -1284,9 +1284,9 @@ def main():
                 for c, r in st.session_state.results.items()
             )
 
-            comb_md, comb_pdf = st.columns(2)
-
             st.markdown(f"## Download combined report")
+
+            comb_md, comb_pdf = st.columns(2)
 
             with comb_md:
                 # Markdown download
