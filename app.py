@@ -693,7 +693,7 @@ def _safe_key(*parts: str) -> str:
     return re.sub(r"[^a-zA-Z0-9_]+", "_", raw).strip("_").lower()
 
 
-def render_price_chart(hist: pd.DataFrame, company: str):
+def render_price_chart(hist: pd.DataFrame, company: str, period):
     if hist is None or hist.empty:
         st.info("No price history available for this ticker.")
         return
@@ -787,7 +787,7 @@ def render_price_chart(hist: pd.DataFrame, company: str):
     )
 
     fig.update_layout(
-        title=f"{company} — 1 Year Price Trend",
+        title=f"{company} — {period} Price Trend",
         title_font_color=BOB_NAVY,
         plot_bgcolor="white",
         paper_bgcolor="white",
@@ -1260,7 +1260,7 @@ def main():
 
                 chart_col, gauge_col = st.columns([2, 1])
                 with chart_col:
-                    render_price_chart(r["hist"], company)
+                    render_price_chart(selected_hist, company, period)
                 with gauge_col:
                     render_risk_gauge(r["risk_rating"], company)
 
