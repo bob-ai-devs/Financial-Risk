@@ -53,7 +53,6 @@ import plotly.graph_objects as go
 import requests
 import streamlit as st
 import yfinance as yf
-import reportlab
 
 try:
     import google.generativeai as genai
@@ -917,109 +916,142 @@ def render_sidebar():
 
 
 def markdown_to_pdf(markdown_text):
-    from reportlab.lib.pagesizes import A4
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.enums import TA_LEFT
-    from reportlab.lib.units import mm
+    import markdown
+    from xhtml2pdf import pisa
     from io import BytesIO
-    import re
 
-    buffer = BytesIO()
-
-    doc = SimpleDocTemplate(
-        buffer,
-        pagesize=A4,
-        rightMargin=18 * mm,
-        leftMargin=18 * mm,
-        topMargin=18 * mm,
-        bottomMargin=18 * mm,
+    html_body = markdown.markdown(
+        markdown_text,
+        extensions=[
+            "tables",
+            "fenced_code",
+            "nl2br",
+            "sane_lists",
+        ],
     )
 
-    styles = getSampleStyleSheet()
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
 
-    title_style = ParagraphStyle(
-        "ReportTitle",
-        parent=styles["Title"],
-        fontSize=18,
-        leading=22,
-        spaceAfter=12,
+        <style>
+            @page {{
+                size: A4;
+                margin: 18mm 15mm 18mm 15mm;
+            }}
+
+            body {{
+                font-family: Helvetica, Arial, sans-serif;
+                font-size: 9.5pt;
+                line-height: 1.45;
+                color: #222222;
+            }}
+
+            h1 {{
+                font-size: 20pt;
+                margin-bottom: 12px;
+                color: #002e6e;
+            }}
+
+            h2 {{
+                font-size: 15pt;
+                margin-top: 18px;
+                margin-bottom: 8px;
+                color: #002e6e;
+            }}
+
+            h3 {{
+                font-size: 12pt;
+                margin-top: 14px;
+                margin-bottom: 6px;
+                color: #0059b3;
+            }}
+
+            p {{
+                margin-top: 5px;
+                margin-bottom: 7px;
+            }}
+
+            ul, ol {{
+                margin-top: 4px;
+                margin-bottom: 8px;
+            }}
+
+            li {{
+                margin-bottom: 3px;
+            }}
+
+            table {{
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 10px;
+                margin-bottom: 14px;
+                font-size: 8.5pt;
+            }}
+
+            th {{
+                background-color: #002e6e;
+                color: white;
+                font-weight: bold;
+                text-align: left;
+                padding: 6px;
+                border: 1px solid #999999;
+            }}
+
+            td {{
+                padding: 6px;
+                border: 1px solid #999999;
+                vertical-align: top;
+            }}
+
+            tr {{
+                page-break-inside: avoid;
+            }}
+
+            strong {{
+                font-weight: bold;
+            }}
+
+            code {{
+                font-family: Courier;
+                font-size: 8pt;
+            }}
+
+            pre {{
+                background-color: #f2f2f2;
+                padding: 8px;
+                border: 1px solid #cccccc;
+            }}
+
+            blockquote {{
+                border-left: 4px solid #999999;
+                padding-left: 10px;
+                color: #555555;
+            }}
+        </style>
+    </head>
+
+    <body>
+        {html_body}
+    </body>
+    </html>
+    """
+
+    pdf_buffer = BytesIO()
+
+    result = pisa.CreatePDF(
+        src=html,
+        dest=pdf_buffer,
     )
 
-    heading_style = ParagraphStyle(
-        "ReportHeading",
-        parent=styles["Heading2"],
-        fontSize=13,
-        leading=16,
-        spaceBefore=10,
-        spaceAfter=6,
-    )
+    if result.err:
+        raise RuntimeError("Unable to generate PDF")
 
-    body_style = ParagraphStyle(
-        "ReportBody",
-        parent=styles["BodyText"],
-        fontSize=9.5,
-        leading=13,
-        spaceAfter=5,
-    )
+    pdf_buffer.seek(0)
 
-    bullet_style = ParagraphStyle(
-        "ReportBullet",
-        parent=body_style,
-        leftIndent=12,
-        firstLineIndent=-7,
-    )
-
-    story = []
-
-    for line in markdown_text.splitlines():
-        line = line.strip()
-
-        if not line:
-            story.append(Spacer(1, 5))
-            continue
-
-        # Heading
-        if line.startswith("# "):
-            text = line[2:].strip()
-            story.append(Paragraph(text, title_style))
-
-        elif line.startswith("## "):
-            text = line[3:].strip()
-            story.append(Paragraph(text, heading_style))
-
-        elif line.startswith("### "):
-            text = line[4:].strip()
-            story.append(Paragraph(text, heading_style))
-
-        # Bullet
-        elif line.startswith("- ") or line.startswith("* "):
-            text = line[2:].strip()
-            text = re.sub(r"\*\*(.*?)\*\*", r"<b>\1</b>", text)
-            story.append(Paragraph(f"• {text}", bullet_style))
-
-        # Numbered list
-        elif re.match(r"^\d+\.\s+", line):
-            text = re.sub(r"^(\d+)\.\s+", r"\1. ", line)
-            text = re.sub(r"\*\*(.*?)\*\*", r"<b>\1</b>", text)
-            story.append(Paragraph(text, bullet_style))
-
-        # Horizontal rule
-        elif re.match(r"^[-*_]{3,}$", line):
-            story.append(Spacer(1, 5))
-
-        # Normal paragraph
-        else:
-            text = re.sub(r"\*\*(.*?)\*\*", r"<b>\1</b>", line)
-            text = re.sub(r"\*(.*?)\*", r"<i>\1</i>", text)
-            text = text.replace("&", "&amp;")
-            text = text.replace("<b>", "<b>").replace("</b>", "</b>")
-            story.append(Paragraph(text, body_style))
-
-    doc.build(story)
-
-    buffer.seek(0)
-    return buffer.getvalue()
+    return pdf_buffer.getvalue()
 
 # ==============================================================================
 # MAIN APP
