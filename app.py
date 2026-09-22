@@ -447,10 +447,10 @@ def get_financial_data(ticker: str):
     except Exception:
         hist_wk = pd.DataFrame()
     try:
-        hist_d = stock.history(period="1d")
+        hist_qt = stock.history(period="3mo")
     except Exception:
-        hist_d = pd.DataFrame()
-    return bs, pl, cf, hist, hist_mo, hist_wk, hist_d
+        hist_qt = pd.DataFrame()
+    return bs, pl, cf, hist, hist_mo, hist_wk, hist_qt
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
@@ -1175,7 +1175,7 @@ def main():
                                 pass
                 
                         status_box.update(label=f"{company}: Fetching financial data …")
-                        bs, pl, cf, hist, hist_mo, hist_wk, hist_d = get_financial_data(ticker)
+                        bs, pl, cf, hist, hist_mo, hist_wk, hist_qt = get_financial_data(ticker)
                 
                         status_box.update(label=f"{company}: Fetching market data …")
                         market_stats = get_market_stats(ticker)
@@ -1198,7 +1198,7 @@ def main():
                             "hist": hist,
                             "hist_mo": hist_mo,
                             "hist_wk": hist_wk,
-                            "hist_d": hist_d,
+                            "hist_qt": hist_qt,
                             "bs": bs,
                             "pl": pl,
                             "cf": cf,
@@ -1242,7 +1242,7 @@ def main():
                 # Price chart period selector
                 period = st.radio(
                     "Price history",
-                    options=["1 Year", "1 Month", "1 Week", "1 Day"],
+                    options=["1 Year", "1 Quarter", "1 Month", "1 Week"],
                     horizontal=True,
                     index=0,
                     key=_safe_key("price_period", company),
@@ -1251,9 +1251,9 @@ def main():
 
                 hist_map = {
                      "1 Year": r["hist"],
+                     "1 Quarter": r["hist_qt"],
                      "1 Month": r["hist_mo"],
                      "1 Week": r["hist_wk"],
-                     "1 Day": r["hist_d"],
                  }
 
                 selected_hist = hist_map.get(period)
