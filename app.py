@@ -438,7 +438,19 @@ def get_financial_data(ticker: str):
         hist = stock.history(period="1y")
     except Exception:
         hist = pd.DataFrame()
-    return bs, pl, cf, hist
+    try:
+        hist_mo = stock.history(period="1mo")
+    except Exception:
+        hist_mo = pd.DataFrame()
+    try:
+        hist_wk = stock.history(period="7d")
+    except Exception:
+        hist_wk = pd.DataFrame()
+    try:
+        hist_d = stock.history(period="1d")
+    except Exception:
+        hist_d = pd.DataFrame()
+    return bs, pl, cf, hist, hist_mo, hist_wk, hist_d
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
@@ -1163,7 +1175,7 @@ def main():
                                 pass
                 
                         status_box.update(label=f"{company}: Fetching financial data …")
-                        bs, pl, cf, hist = get_financial_data(ticker)
+                        bs, pl, cf, hist, hist_mo, hist_wk, hist_d = get_financial_data(ticker)
                 
                         status_box.update(label=f"{company}: Fetching market data …")
                         market_stats = get_market_stats(ticker)
@@ -1184,6 +1196,9 @@ def main():
                             "ticker": ticker,
                             "stats": market_stats,
                             "hist": hist,
+                            "hist_mo": hist_mo,
+                            "hist_wk": hist_wk,
+                            "hist_d": hist_d,
                             "bs": bs,
                             "pl": pl,
                             "cf": cf,
@@ -1223,6 +1238,25 @@ def main():
 
                 render_key_stats(r["stats"] or {})
                 st.write("")
+
+                # Price chart period selector
+                period = st.radio(
+                    "Price history",
+                    options=["1 Year", "1 Month", "1 Week", "1 Day"],
+                    horizontal=True,
+                    index=0,
+                    key=_safe_key("price_period", company),
+                    label_visibility="collapsed",
+                )
+
+                hist_map = {
+                     "1 Year": r["hist"],
+                     "1 Month": r["hist_mo"],
+                     "1 Week": r["hist_wk"],
+                     "1 Day": r["hist_d"],
+                 }
+
+                selected_hist = hist_map.get(period)
 
                 chart_col, gauge_col = st.columns([2, 1])
                 with chart_col:
