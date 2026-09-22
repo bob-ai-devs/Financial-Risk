@@ -1253,35 +1253,29 @@ def main():
                     st.markdown("**Cash Flow**")
                     st.dataframe(r["cf"], use_container_width=True, key=_safe_key("cf", company))
 
-                st.download_button(
-                    f"⬇️ Download {company} report (Markdown)",
-                    data=r["report"],
-                    file_name=f"{company.replace(' ', '_')}_risk_report.md",
-                    mime="text/markdown",
-                    key=_safe_key("download", company),
-                )
+                comp_md, comp_pdf = st.columns(2)
+
+                st.markdown(f"## Download {company} report")
+
+                with comp_md:
+                    st.download_button(
+                        f"⬇️ Download {company} report (Markdown)",
+                        data=r["report"],
+                        file_name=f"{company.replace(' ', '_')}_risk_report.md",
+                        mime="text/markdown",
+                        key=_safe_key("download", company),
+                    )
 
                 pdf_data = markdown_to_pdf(r["report"])
 
-                st.download_button(
-                    f"⬇️ Download {company} report (PDF)",
-                    data=pdf_data,
-                    file_name=f"{company.replace(' ', '_')}_risk_report.pdf",
-                    mime="application/pdf",
-                    key=_safe_key("download_pdf", company),
-                )
-
-        # if len(st.session_state.results) > 1:
-        #     combined = "\n\n---\n\n".join(
-        #         f"# {c}\n\n{r['report']}" for c, r in st.session_state.results.items()
-        #     )
-        #     st.download_button(
-        #         "⬇️ Download combined report (all companies)",
-        #         data=combined,
-        #         file_name="BOB_AI_Financial_Risk_Report.md",
-        #         mime="text/markdown",
-        #         key="download_combined",
-        #     )
+                with comp_pdf:
+                    st.download_button(
+                        f"⬇️ Download {company} report (PDF)",
+                        data=pdf_data,
+                        file_name=f"{company.replace(' ', '_')}_risk_report.pdf",
+                        mime="application/pdf",
+                        key=_safe_key("download_pdf", company),
+                    )
 
         if len(st.session_state.results) > 1:
 
@@ -1289,15 +1283,20 @@ def main():
                 f"# {c}\n\n{r['report']}"
                 for c, r in st.session_state.results.items()
             )
-        
-            # Markdown download
-            st.download_button(
-                "⬇️ Download combined report (Markdown)",
-                data=combined,
-                file_name="BOB_AI_Financial_Risk_Report.md",
-                mime="text/markdown",
-                key="download_combined",
-            )
+
+            comb_md, comb_pdf = st.columns(2)
+
+            st.markdown(f"## Download combined report")
+
+            with comb_md:
+                # Markdown download
+                st.download_button(
+                    "⬇️ Download combined report (Markdown)",
+                    data=combined,
+                    file_name="BOB_AI_Financial_Risk_Report.md",
+                    mime="text/markdown",
+                    key="download_combined",
+                )
         
             # PDF content — each company starts on a new page
             combined_html = ""
@@ -1438,14 +1437,15 @@ def main():
             )
         
             pdf_buffer.seek(0)
-        
-            st.download_button(
-                "⬇️ Download combined report (PDF)",
-                data=pdf_buffer.getvalue(),
-                file_name="BOB_AI_Financial_Risk_Report.pdf",
-                mime="application/pdf",
-                key="download_combined_pdf",
-            )
+
+            with comb_pdf:
+                st.download_button(
+                    "⬇️ Download combined report (PDF)",
+                    data=pdf_buffer.getvalue(),
+                    file_name="BOB_AI_Financial_Risk_Report.pdf",
+                    mime="application/pdf",
+                    key="download_combined_pdf",
+                )
 
 
 if __name__ == "__main__":
