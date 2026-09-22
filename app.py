@@ -946,7 +946,7 @@ def main():
             st.error("`google-generativeai` is not installed. Run `pip install google-generativeai`.")
         else:
             model = get_model(model_name, api_key)
-            companies = [c.strip() for c in names_raw.split(",") if c.strip()]
+            companies = [c.strip().upper() for c in names_raw.split(",") if c.strip()]
             rows = []
             with st.spinner("Resolving tickers via Gemini + local cache …"):
                 for company in companies:
