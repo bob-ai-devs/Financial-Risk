@@ -982,11 +982,11 @@ def main():
         
             company = str(
                 edited.iloc[row_idx]["Company"]
-            ).strip()
+            ).strip().lower()
         
             ticker = str(
                 changes["Ticker"]
-            ).strip()
+            ).strip().upper()
         
             if company and ticker and ticker.lower() != "nan":
                 ticker_updates[company] = ticker
