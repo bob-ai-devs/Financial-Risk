@@ -766,7 +766,7 @@ def render_price_chart(hist: pd.DataFrame, company: str, period):
             size=10,
         ),
         xanchor="center",
-        yanchor="bottom",
+        yanchor="middle",
     )
 
     # Lowest date annotation
@@ -783,7 +783,7 @@ def render_price_chart(hist: pd.DataFrame, company: str, period):
             size=10,
         ),
         xanchor="center",
-        yanchor="bottom",
+        yanchor="middle",
     )
 
     fig.update_layout(
