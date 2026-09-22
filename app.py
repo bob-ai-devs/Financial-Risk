@@ -1008,18 +1008,34 @@ def main():
                     st.warning("No valid tickers to analyze.")
                 for _, row in valid_rows.iterrows():
                     company, ticker = row["Company"], row["Ticker"].strip()
-                    status_box = st.status(f"Analyzing {company} ({ticker}) …", expanded=False)
+                    status_box = st.status(
+                        f"Analyzing {company} ({ticker}) …",
+                        expanded=True
+                    )
                     try:
                         for i, msg in enumerate(STATUS_MESSAGES):
                             status_box.update(label=msg)
                             if i in (1, 3, 5):  # only actually do work at meaningful points
                                 pass
+                
+                        status_box.update(label=f"{company}: Fetching financial data …")
                         bs, pl, cf, hist = get_financial_data(ticker)
+                
+                        status_box.update(label=f"{company}: Fetching market data …")
                         market_stats = get_market_stats(ticker)
+                
+                        status_box.update(label=f"{company}: Preparing financial data …")
                         financial_text = financials_to_text(bs, pl, cf)
+                
+                        status_box.update(label=f"{company}: Preparing market data …")
                         market_text = market_stats_to_text(market_stats)
+                
+                        status_box.update(label=f"{company}: Generating AI report …")
                         report_text = generate_report(model, financial_text, market_text)
+                
+                        status_box.update(label=f"{company}: Extracting risk rating …")
                         risk_rating = extract_risk_rating(report_text)
+                
                         st.session_state.results[company] = {
                             "ticker": ticker,
                             "stats": market_stats,
@@ -1031,9 +1047,19 @@ def main():
                             "risk_rating": risk_rating,
                             "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
                         }
-                        status_box.update(label=f"{company} done ✅", state="complete")
+                
+                        status_box.update(
+                            label=f"{company} done ✅",
+                            state="complete",
+                            expanded=False
+                        )
+                
                     except Exception as e:
-                        status_box.update(label=f"{company} failed: {e}", state="error")
+                        status_box.update(
+                            label=f"{company} failed: {e}",
+                            state="error",
+                            expanded=False
+                        )
 
     # --------------------------------------------------------------------
     # RESULTS
