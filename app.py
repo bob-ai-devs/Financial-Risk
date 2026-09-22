@@ -54,6 +54,10 @@ import requests
 import streamlit as st
 import yfinance as yf
 
+import markdown
+from xhtml2pdf import pisa
+from io import BytesIO
+
 try:
     import google.generativeai as genai
 except ImportError:  # pragma: no cover
@@ -916,9 +920,6 @@ def render_sidebar():
 
 
 def markdown_to_pdf(markdown_text):
-    import markdown
-    from xhtml2pdf import pisa
-    from io import BytesIO
 
     html_body = markdown.markdown(
         markdown_text,
