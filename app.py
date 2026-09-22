@@ -1254,7 +1254,7 @@ def main():
                     horizontal=True,
                     index=0,
                     key=_safe_key("price_period", company),
-                    label_visibility="collapsed",
+                    # label_visibility="collapsed",
                 )
 
                 hist_map = {
