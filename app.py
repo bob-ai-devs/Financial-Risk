@@ -1270,16 +1270,180 @@ def main():
                     key=_safe_key("download_pdf", company),
                 )
 
+        # if len(st.session_state.results) > 1:
+        #     combined = "\n\n---\n\n".join(
+        #         f"# {c}\n\n{r['report']}" for c, r in st.session_state.results.items()
+        #     )
+        #     st.download_button(
+        #         "⬇️ Download combined report (all companies)",
+        #         data=combined,
+        #         file_name="BOB_AI_Financial_Risk_Report.md",
+        #         mime="text/markdown",
+        #         key="download_combined",
+        #     )
+
         if len(st.session_state.results) > 1:
+
             combined = "\n\n---\n\n".join(
-                f"# {c}\n\n{r['report']}" for c, r in st.session_state.results.items()
+                f"# {c}\n\n{r['report']}"
+                for c, r in st.session_state.results.items()
             )
+        
+            # Markdown download
             st.download_button(
-                "⬇️ Download combined report (all companies)",
+                "⬇️ Download combined report (Markdown)",
                 data=combined,
                 file_name="BOB_AI_Financial_Risk_Report.md",
                 mime="text/markdown",
                 key="download_combined",
+            )
+        
+            # PDF content — each company starts on a new page
+            combined_html = ""
+        
+            for idx, (company, r) in enumerate(st.session_state.results.items()):
+        
+                if idx > 0:
+                    combined_html += """
+                    <div style="page-break-before: always;"></div>
+                    """
+        
+                company_html = markdown.markdown(
+                    f"# {company}\n\n{r['report']}",
+                    extensions=[
+                        "tables",
+                        "fenced_code",
+                        "nl2br",
+                        "sane_lists",
+                    ],
+                )
+        
+                combined_html += company_html
+        
+            html = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+        
+                <style>
+                    @page {{
+                        size: A4;
+                        margin: 18mm 15mm 18mm 15mm;
+                    }}
+        
+                    body {{
+                        font-family: Helvetica, Arial, sans-serif;
+                        font-size: 9.5pt;
+                        line-height: 1.45;
+                        color: #222222;
+                    }}
+        
+                    h1 {{
+                        font-size: 20pt;
+                        color: #002e6e;
+                        margin-bottom: 14px;
+                    }}
+        
+                    h2 {{
+                        font-size: 15pt;
+                        color: #002e6e;
+                        margin-top: 18px;
+                        margin-bottom: 8px;
+                    }}
+        
+                    h3 {{
+                        font-size: 12pt;
+                        color: #0059b3;
+                        margin-top: 14px;
+                        margin-bottom: 6px;
+                    }}
+        
+                    p {{
+                        margin-top: 5px;
+                        margin-bottom: 7px;
+                    }}
+        
+                    ul, ol {{
+                        margin-top: 4px;
+                        margin-bottom: 8px;
+                    }}
+        
+                    li {{
+                        margin-bottom: 3px;
+                    }}
+        
+                    table {{
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-top: 10px;
+                        margin-bottom: 14px;
+                        font-size: 8.5pt;
+                    }}
+        
+                    th {{
+                        background-color: #002e6e;
+                        color: white;
+                        font-weight: bold;
+                        text-align: left;
+                        padding: 6px;
+                        border: 1px solid #999999;
+                    }}
+        
+                    td {{
+                        padding: 6px;
+                        border: 1px solid #999999;
+                        vertical-align: top;
+                    }}
+        
+                    tr {{
+                        page-break-inside: avoid;
+                    }}
+        
+                    strong {{
+                        font-weight: bold;
+                    }}
+        
+                    code {{
+                        font-family: Courier;
+                        font-size: 8pt;
+                    }}
+        
+                    pre {{
+                        background-color: #f2f2f2;
+                        padding: 8px;
+                        border: 1px solid #cccccc;
+                    }}
+        
+                    blockquote {{
+                        border-left: 4px solid #999999;
+                        padding-left: 10px;
+                        color: #555555;
+                    }}
+                </style>
+            </head>
+        
+            <body>
+                {combined_html}
+            </body>
+            </html>
+            """
+        
+            pdf_buffer = BytesIO()
+        
+            pisa.CreatePDF(
+                src=html,
+                dest=pdf_buffer,
+            )
+        
+            pdf_buffer.seek(0)
+        
+            st.download_button(
+                "⬇️ Download combined report (PDF)",
+                data=pdf_buffer.getvalue(),
+                file_name="BOB_AI_Financial_Risk_Report.pdf",
+                mime="application/pdf",
+                key="download_combined_pdf",
             )
 
 
