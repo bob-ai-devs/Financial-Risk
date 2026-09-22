@@ -1248,13 +1248,20 @@ def main():
                 st.write("")
 
                 # Price chart period selector
+                st.markdown(
+                    "<div style='font-size:18px; font-weight:700; color:#002e6e; margin-bottom:4px;'>"
+                    "Price history"
+                    "</div>",
+                    unsafe_allow_html=True,
+                )
+             
                 period = st.radio(
-                    "### Price history",
+                    "",
                     options=["1 Year", "1 Quarter", "1 Month", "1 Week"],
                     horizontal=True,
                     index=0,
                     key=_safe_key("price_period", company),
-                    # label_visibility="collapsed",
+                    label_visibility="collapsed",
                 )
 
                 hist_map = {
