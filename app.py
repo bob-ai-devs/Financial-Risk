@@ -53,6 +53,7 @@ import plotly.graph_objects as go
 import requests
 import streamlit as st
 import yfinance as yf
+import reportlab
 
 try:
     import google.generativeai as genai
@@ -914,6 +915,112 @@ def render_sidebar():
 
     return api_key, model_name
 
+
+def markdown_to_pdf(markdown_text):
+    from reportlab.lib.pagesizes import A4
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_LEFT
+    from reportlab.lib.units import mm
+    from io import BytesIO
+    import re
+
+    buffer = BytesIO()
+
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=18 * mm,
+        leftMargin=18 * mm,
+        topMargin=18 * mm,
+        bottomMargin=18 * mm,
+    )
+
+    styles = getSampleStyleSheet()
+
+    title_style = ParagraphStyle(
+        "ReportTitle",
+        parent=styles["Title"],
+        fontSize=18,
+        leading=22,
+        spaceAfter=12,
+    )
+
+    heading_style = ParagraphStyle(
+        "ReportHeading",
+        parent=styles["Heading2"],
+        fontSize=13,
+        leading=16,
+        spaceBefore=10,
+        spaceAfter=6,
+    )
+
+    body_style = ParagraphStyle(
+        "ReportBody",
+        parent=styles["BodyText"],
+        fontSize=9.5,
+        leading=13,
+        spaceAfter=5,
+    )
+
+    bullet_style = ParagraphStyle(
+        "ReportBullet",
+        parent=body_style,
+        leftIndent=12,
+        firstLineIndent=-7,
+    )
+
+    story = []
+
+    for line in markdown_text.splitlines():
+        line = line.strip()
+
+        if not line:
+            story.append(Spacer(1, 5))
+            continue
+
+        # Heading
+        if line.startswith("# "):
+            text = line[2:].strip()
+            story.append(Paragraph(text, title_style))
+
+        elif line.startswith("## "):
+            text = line[3:].strip()
+            story.append(Paragraph(text, heading_style))
+
+        elif line.startswith("### "):
+            text = line[4:].strip()
+            story.append(Paragraph(text, heading_style))
+
+        # Bullet
+        elif line.startswith("- ") or line.startswith("* "):
+            text = line[2:].strip()
+            text = re.sub(r"\*\*(.*?)\*\*", r"<b>\1</b>", text)
+            story.append(Paragraph(f"• {text}", bullet_style))
+
+        # Numbered list
+        elif re.match(r"^\d+\.\s+", line):
+            text = re.sub(r"^(\d+)\.\s+", r"\1. ", line)
+            text = re.sub(r"\*\*(.*?)\*\*", r"<b>\1</b>", text)
+            story.append(Paragraph(text, bullet_style))
+
+        # Horizontal rule
+        elif re.match(r"^[-*_]{3,}$", line):
+            story.append(Spacer(1, 5))
+
+        # Normal paragraph
+        else:
+            text = re.sub(r"\*\*(.*?)\*\*", r"<b>\1</b>", line)
+            text = re.sub(r"\*(.*?)\*", r"<i>\1</i>", text)
+            text = text.replace("&", "&amp;")
+            text = text.replace("<b>", "<b>").replace("</b>", "</b>")
+            story.append(Paragraph(text, body_style))
+
+    doc.build(story)
+
+    buffer.seek(0)
+    return buffer.getvalue()
+
 # ==============================================================================
 # MAIN APP
 # ==============================================================================
@@ -1119,6 +1226,16 @@ def main():
                     file_name=f"{company.replace(' ', '_')}_risk_report.md",
                     mime="text/markdown",
                     key=_safe_key("download", company),
+                )
+
+                pdf_data = markdown_to_pdf(r["report"])
+
+                st.download_button(
+                    f"⬇️ Download {company} report (PDF)",
+                    data=pdf_data,
+                    file_name=f"{company.replace(' ', '_')}_risk_report.pdf",
+                    mime="application/pdf",
+                    key=_safe_key("download_pdf", company),
                 )
 
         if len(st.session_state.results) > 1:
