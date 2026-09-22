@@ -755,7 +755,7 @@ def render_price_chart(hist: pd.DataFrame, company: str, period):
     # Highest date annotation
     fig.add_annotation(
         x=max_idx,
-        y=1.02,
+        y=0.5,
         xref="x",
         yref="paper",
         text=max_date,
@@ -772,7 +772,7 @@ def render_price_chart(hist: pd.DataFrame, company: str, period):
     # Lowest date annotation
     fig.add_annotation(
         x=min_idx,
-        y=1.02,
+        y=0.5,
         xref="x",
         yref="paper",
         text=min_date,
