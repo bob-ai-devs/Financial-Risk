@@ -170,6 +170,10 @@ st.markdown(
         border-left: 5px solid {BOB_ORANGE};
         box-shadow: 0 2px 6px rgba(0,0,0,0.06);
     }}
+    div[data-testid="stVerticalBlockBorderWrapper"] {{
+        border-color: {BOB_NAVY} !important;
+        border-radius: 8px !important;
+    }}
     </style>
     """,
     unsafe_allow_html=True,
@@ -1252,28 +1256,12 @@ def main():
                     st.dataframe(r["pl"], use_container_width=True, key=_safe_key("pl", company))
                     st.markdown("**Cash Flow**")
                     st.dataframe(r["cf"], use_container_width=True, key=_safe_key("cf", company))
-
-
-                st.markdown(
-                    f"""
-                    <div style="
-                        background-color: #fff8ef;
-                        border: 1px solid {BOB_NAVY};
-                        border-radius: 8px;
-                        padding: 10px 14px;
-                        color: #002e6e;
-                    ">
-                        {st.markdown(f"## Download {company} report")}
-                        <br/>
-                        {comp_md, comp_pdf = st.columns(2)}
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
-
-                # st.markdown(f"## Download {company} report")
-
-                # comp_md, comp_pdf = st.columns(2)
+  
+                with st.container(border=True):
+                 
+                    st.markdown(f"## Download {company} report")
+    
+                    comp_md, comp_pdf = st.columns(2)
 
                 with comp_md:
                     st.download_button(
@@ -1302,9 +1290,11 @@ def main():
                 for c, r in st.session_state.results.items()
             )
 
-            st.markdown(f"## Download combined report")
-
-            comb_md, comb_pdf = st.columns(2)
+            with st.container(border=True):
+             
+                st.markdown(f"## Download combined report")
+    
+                comb_md, comb_pdf = st.columns(2)
 
             with comb_md:
                 # Markdown download
