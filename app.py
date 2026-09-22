@@ -1249,7 +1249,7 @@ def main():
 
                 # Price chart period selector
                 period = st.radio(
-                    "Price history",
+                    "### Price history",
                     options=["1 Year", "1 Quarter", "1 Month", "1 Week"],
                     horizontal=True,
                     index=0,
