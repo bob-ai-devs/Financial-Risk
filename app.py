@@ -1253,9 +1253,27 @@ def main():
                     st.markdown("**Cash Flow**")
                     st.dataframe(r["cf"], use_container_width=True, key=_safe_key("cf", company))
 
-                st.markdown(f"## Download {company} report")
 
-                comp_md, comp_pdf = st.columns(2)
+                st.markdown(
+                    f"""
+                    <div style="
+                        background-color: #fff8ef;
+                        border: 1px solid {BOB_NAVY};
+                        border-radius: 8px;
+                        padding: 10px 14px;
+                        color: #002e6e;
+                    ">
+                        {st.markdown(f"## Download {company} report")}
+                        <br/>
+                        {comp_md, comp_pdf = st.columns(2)}
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+
+                # st.markdown(f"## Download {company} report")
+
+                # comp_md, comp_pdf = st.columns(2)
 
                 with comp_md:
                     st.download_button(
