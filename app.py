@@ -2019,7 +2019,8 @@ def main():
                 #     """,
                 #     unsafe_allow_html=True
                 # )
-                st.markdown(text_to_html(r["report"]), unsafe_allow_html=True)
+                with st.container(border=True):
+                    st.markdown(text_to_html(r["report"]), unsafe_allow_html=True)
                 # st.markdown(sanitize_markdown(r["report"]))
 
                 st.html("<br>")
