@@ -2214,6 +2214,8 @@ def main():
             # </body>
             # </html>
             # """
+
+            html = combined_html
         
             pdf_buffer = BytesIO()
         
