@@ -58,6 +58,8 @@ import markdown
 from xhtml2pdf import pisa
 from io import BytesIO
 
+import html as html_lib
+
 try:
     import google.generativeai as genai
 except ImportError:  # pragma: no cover
