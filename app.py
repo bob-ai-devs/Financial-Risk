@@ -2004,21 +2004,22 @@ def main():
                     render_risk_gauge(r["risk_rating"], company)
 
                 st.markdown("#### AI Risk Report")
-                st.markdown(
-                    f"""
-                    <div style="
-                        background-color: #fff8ef;
-                        border: 1px solid #f7941d;
-                        border-radius: 8px;
-                        padding: 10px 14px;
-                        color: #002e6e;
-                    ">
+                # st.markdown(
+                #     f"""
+                #     <div style="
+                #         background-color: #fff8ef;
+                #         border: 1px solid #f7941d;
+                #         border-radius: 8px;
+                #         padding: 10px 14px;
+                #         color: #002e6e;
+                #     ">
            
-                        {text_to_html(r["report"])}
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
+                #         {text_to_html(r["report"])}
+                #     </div>
+                #     """,
+                #     unsafe_allow_html=True
+                # )
+                st.markdown(text_to_html(r["report"]), unsafe_allow_html=True)
                 # st.markdown(sanitize_markdown(r["report"]))
 
                 st.html("<br>")
