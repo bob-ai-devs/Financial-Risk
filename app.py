@@ -2092,7 +2092,7 @@ def main():
                     <div style="page-break-before: always;"></div>
                     """
 
-                combined_html += text_to_html(r['report'])
+                combined_html += f"# {company}\n\n{text_to_html(r['report'])}"
         
             #     company_html = markdown.markdown(
             #         f"# {company}\n\n{r['report']}",
