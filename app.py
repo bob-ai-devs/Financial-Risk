@@ -2093,7 +2093,7 @@ def main():
                     """
 
                 # combined_html += f"# {company}\n\n{text_to_html(r['report'])}"
-                combined_html += f"'<p style="color:{BOB_ORANGE_DEEP}; font-size:36px; font-weight:bold;">{company}</p><br/><br/>{text_to_html(r['report'])}"
+                combined_html += f"<p style='color:{BOB_ORANGE_DEEP}; font-size:36px; font-weight:bold;'>{company}</p><br/><br/>{text_to_html(r['report'])}"
         
             #     company_html = markdown.markdown(
             #         f"# {company}\n\n{r['report']}",
